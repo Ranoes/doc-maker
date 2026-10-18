@@ -1,0 +1,5 @@
+{
+  "name": "doc-maker",
+  "version": "1.0.0",
+  "description": "Generate .docx and .odt documents based on any existing .doc, .docx, or .odt reference template while preserving exact formatting, styles, and tables."
+}

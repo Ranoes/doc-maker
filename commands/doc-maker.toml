@@ -1,0 +1,8 @@
+description = "Generate .docx and .odt documents from a reference .doc/.docx/.odt template and given material"
+prompt = """Activate the `doc-maker` skill (`skills/doc-maker/SKILL.md`) to handle: {{args}}
+
+Follow the mandatory `doc-maker` workflow:
+1. Run `doc_maker.py inspect` on the reference document.
+2. Check all `identity_fields` and `placeholders` (e.g. Name/Nama, NIM, Age, Class, Date). If any identification field is missing from the user's material, STOP and ask the user what to fill.
+3. Show the complete resolved identification list to the user and ask them to confirm it is correct before generating the document.
+4. Once confirmed, run `doc_maker.py render` to generate the requested `.docx` and/or `.odt` output(s) and verify the result."""

@@ -23,17 +23,18 @@ Follow these steps in order every time:
 
 ### Step 1: Inspect the Reference Document
 
-Run `inspect` on the reference `.doc`, `.docx`, or `.odt` file to extract its structure, `placeholders`, `identity_fields`, `blocks`, and `tables`:
+Run `inspect` on the reference `.doc`, `.docx`, or `.odt` file to extract its structure, `placeholders`, `identity_fields`, `blocks`, `tables`, and `tocs` (use `-o <path.json>` for large templates to write UTF-8 JSON directly to disk without shell encoding or truncation issues):
 
 ```bash
-python <path-to-skill>/scripts/doc_maker.py inspect "<reference_doc>"
+python <path-to-skill>/scripts/doc_maker.py inspect "<reference_doc>" -o inspect.json
 ```
 
 The JSON output contains:
 - `placeholders`: Explicit tags like `{{name}}` or `[TITLE]`.
 - `identity_fields`: Automatically detected personal/document identification fields (e.g., `Name`/`Nama`, `NIM`/`NPM`/`Student ID`, `Age`/`Umur`, `Class`/`Kelas`, `Department`/`Jurusan`/`Prodi`, `Lecturer`/`Dosen`, `Date`/`Tanggal`, `Email`, `Phone`, etc.) with their `id`, `label`, `current_value`, and `raw_text`.
-- `blocks`: Every paragraph/heading in the document (`b0`, `b1`, ..., plus header/footer blocks `h0_b0`, `f0_b0`, ...) with its `style`, formatting summary, and `text`.
+- `blocks`: Every paragraph/heading in the document (`b0`, `b1`, ..., plus header/footer blocks `h0_b0`, `f0_b0`, ...) with its `style`, formatting summary, `has_images` flag (when the block contains an embedded image/logo), and `text`.
 - `tables`: Every table (`t0`, `t1`, ...) with row/column counts and 2D `rows` cell array.
+- `tocs`: Table of Contents / List of Figures / List of Tables sections (`toc0`, `toc1`, ...) with their index entries.
 
 ---
 
@@ -108,16 +109,26 @@ Once the user confirms the identification details, create a temporary JSON speci
 #### Spec Rules:
 - **Markdown (`.md`) Material Support**:
   - When the user provides a `.md` file as material, strip block-level Markdown prefixes (`# `, `## `, `- `, `* `, `1. `) before placing text into `blocks` or `items` (since the reference document's XML styles already provide heading formatting and bullet/numbering markers).
-  - You **may** keep inline `**bold**` and `*italic*` inside `text` / `items`—`doc_maker.py` automatically converts them into native styled XML runs!
-  - Map Markdown tables (`| A | B |`) directly into 2D arrays in `tables[].rows`.
+  - You **may** keep inline `**bold**`, `*italic*`, and `` `code` `` inside `text` / `items` / table cells—`doc_maker.py` automatically converts them into native styled XML runs!
+  - Map Markdown tables (`| A | B |`) directly into 2D arrays in `tables[].rows` or inline `{"type": "table", "rows": [...]}` inside `blocks[].items`.
 - **`placeholders`**: Replaces matching substrings across all body paragraphs, tables, headers, and footers (handles tags split across multiple XML runs).
 - **`blocks`**:
-  - `{"id": "bX", "text": "..."}`: Replaces the text of block `bX` while keeping its exact paragraph style (`<w:pPr>` / `text:style-name`) and run formatting (`<w:rPr>`). If the original block used `\t` (tabs) around `:` (e.g. `Nama\t: Budi`), preserve `\t` in the replacement string so alignment stays identical.
-  - `{"id": "bX", "items": ["...", "..."]}`: Clones the XML element of `bX` for each string in `items`. Use this whenever the new material has more (or fewer) paragraphs or bullet items than a section in the reference document.
-  - `{"id": "bX", "delete": true}`: Deletes an unneeded block from the reference document (for example, extra paragraphs in a section that were already covered by `items` on the first paragraph).
+  - **Preserving Cover Logos / Embedded Images**: Blocks with `"has_images": true` in `inspect` output (such as cover-page logos) contain embedded drawings. **Never** delete (`"delete": true`) or replace them with `"items"` unless you intend to replace the image.
+  - `{"id": "bX", "text": "..."}`: Replaces the text of block `bX` while keeping its exact paragraph style (`<w:pPr>` / `text:style-name`), run formatting (`<w:rPr>`), and bookmarks/page-breaks. If the original block used `\t` (tabs) around `:` (e.g. `Nama\t: Budi`), preserve `\t` in the replacement string so alignment stays identical.
+  - `{"id": "bX", "items": [...]}`: Replaces `bX` with a sequence of strings or rich item objects:
+    - Plain string `"Paragraph text"` or `{"type": "p", "style": "P33", "text": "..."}`: Clones `bX` (or uses the specified paragraph style).
+    - `{"type": "image", "path": "C:/path/to/img.png", "caption": "Gambar 2.1 ...", "max_width_in": 5.4}` (or Markdown string `"![Gambar 2.1 ...](C:/path/to/img.png)"`): Embeds an image with binary header detection (`PNG`/`JPEG`), aspect-ratio scaling, optional caption paragraph, and `META-INF/manifest.xml` registration.
+    - `{"type": "table", "caption": "Tabel 2.2 ...", "template_table": "t6", "col_widths": [1.3, 2.0, 2.2], "rows": [[...], [...]]}`: Clones a template table (`template_table`) and populates it with dynamic column count and widths.
+    - `{"type": "code_table", "title": "Kode Sumber 2.1: ...", "code": "{\n  ...\n}"}`: Clones a 2-column line-numbered source code table (`t5` / `Table6`) with automatic line numbering and indentation preservation.
+    - `{"type": "heading", "level": 3, "list_style": "WWNum8", "style": "P71", "continue": true, "text": "Sub-section Title"}`: Inserts a numbered heading list item matching the template's multilevel heading list.
+    - `{"type": "list", "list_style": "WWNum7", "items": ["Item 1", "Item 2"]}`: Inserts a numbered or bulleted list.
+  - `{"id": "bX", "delete": true}`: Deletes an unneeded block from the reference document (e.g. template instructions or sample sections).
 - **`tables`**:
-  - `{"id": "tX", "rows": [[...], [...]]}`: Replaces the entire table's content. Row `0` updates the header row in-place; subsequent rows clone the reference table's data template row (`r1`, or `r0` if single-row) so borders, shading, column widths, and fonts are preserved regardless of row count.
-  - `{"id": "tX", "cells": {"row,col": "New text"}}`: Updates specific cells by `row,col` index without changing the number of rows (ideal for 2-column identity/metadata tables).
+  - `{"id": "tX", "col_widths": [...], "rows": [[...], [...]]}`: Replaces the entire table's content and dynamically adjusts column count and widths if the new table has more or fewer columns than the template table.
+  - `{"id": "tX", "cells": {"row,col": "New text"}}`: Updates specific cells by `row,col` index without changing the number of rows.
+  - `{"id": "tX", "delete": true}`: Deletes an unneeded sample table from the template.
+- **`toc_updates`** *(ODT templates with `<text:table-of-content>`)*:
+  - Maps `"toc0"`, `"toc1"`, etc. (from `inspect` output's `"tocs"`) to a list of `{"style": "P15", "text": "Tabel 2.1 ...", "page": "8", "href": "#_bm_tbl_2_1"}` entries, or use `"insert_toc_after"` on a heading block (such as `DAFTAR ISI`) to insert a populated TOC section.
 
 ---
 

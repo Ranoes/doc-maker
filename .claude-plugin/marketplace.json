@@ -1,0 +1,17 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "doc-maker",
+  "description": "Generate .docx and .odt documents based on any existing .doc, .docx, or .odt reference template.",
+  "owner": {
+    "name": "Ranoes",
+    "url": "https://github.com/Ranoes"
+  },
+  "plugins": [
+    {
+      "name": "doc-maker",
+      "description": "Inspect and fill .doc, .docx, and .odt templates while preserving exact formatting, styles, images, and tables.",
+      "source": "./",
+      "category": "productivity"
+    }
+  ]
+}

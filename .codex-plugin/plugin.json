@@ -1,0 +1,28 @@
+{
+  "name": "doc-maker",
+  "version": "1.1.0",
+  "description": "Generate .docx and .odt documents based on any existing .doc, .docx, or .odt reference template while preserving exact formatting, styles, images, and tables.",
+  "author": {
+    "name": "Ranoes",
+    "url": "https://github.com/Ranoes"
+  },
+  "homepage": "https://github.com/Ranoes/doc-maker",
+  "repository": "https://github.com/Ranoes/doc-maker",
+  "license": "MIT",
+  "keywords": ["docx", "odt", "doc", "document-generation", "template", "office"],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Doc Maker",
+    "shortDescription": "Generate .docx and .odt documents from any reference template",
+    "longDescription": "Inspect and fill .doc, .docx, and .odt reference templates with new Markdown/text material, images, and dynamic tables while preserving exact XML formatting.",
+    "developerName": "Ranoes",
+    "category": "Productivity",
+    "capabilities": ["Instructions"],
+    "websiteURL": "https://github.com/Ranoes/doc-maker",
+    "defaultPrompt": [
+      "Use doc-maker to generate a .docx and .odt from this template.",
+      "Inspect this reference document and fill it with my material."
+    ],
+    "brandColor": "#1E40AF"
+  }
+}
